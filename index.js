@@ -1,9 +1,26 @@
 const express = require('express')
 const axios = require('axios')
+const path = require('path')
+const fs = require('fs')
 require('dotenv').config()
 
 const app = express()
 app.use(express.json())
+
+// Panel de administración
+app.use('/panel', express.static(path.join(__dirname, 'panel')))
+
+// Obtener datos actuales
+app.get('/admin/datos', (req, res) => {
+  const datos = JSON.parse(fs.readFileSync('./respuestas.json', 'utf8'))
+  res.json(datos)
+})
+
+// Guardar cambios
+app.post('/admin/guardar', (req, res) => {
+  fs.writeFileSync('./respuestas.json', JSON.stringify(req.body, null, 2))
+  res.json({ ok: true })
+})
 
 const sesiones = {}
 
@@ -15,7 +32,6 @@ function obtenerRespuestas() {
 function detectarRespuesta(mensaje) {
   const respuestas = obtenerRespuestas()
   const texto = mensaje.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-
   for (const clave in respuestas) {
     if (clave === 'default' || clave === 'vendedores') continue
     const palabras = respuestas[clave].palabras_clave || []
@@ -23,7 +39,6 @@ function detectarRespuesta(mensaje) {
       return respuestas[clave].respuesta
     }
   }
-
   return respuestas.default.respuesta
 }
 
@@ -108,15 +123,10 @@ app.post('/webhook', async (req, res) => {
         const vendedor = obtenerVendedor(texto)
         if (vendedor) {
           delete sesiones[telefono]
-
-          // 1 — Responde al cliente con link directo
           const respuestaCliente = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nHaz clic aquí para abrir su WhatsApp directo:\nhttps://wa.me/${vendedor.telefono}\n\n¡Él te atenderá con gusto! 😊`
           await enviarMensaje(telefonoNormalizado, respuestaCliente)
-
-          // 2 — Notifica al vendedor
           await notificarVendedor(vendedor, telefonoNormalizado)
-
-          console.log(`Cliente ${telefonoNormalizado} conectado con vendedor ${vendedor.nombre}`)
+          console.log(`Cliente ${telefonoNormalizado} conectado con ${vendedor.nombre}`)
         } else {
           await enviarMensaje(telefonoNormalizado, `Por favor elige un número válido de la lista. 👆`)
         }
