@@ -283,12 +283,19 @@
   async function guardarVendedores() {
     const vendedores = []
     const items = document.querySelectorAll('[id^="vendedor_"]')
-    items.forEach((_, i) => {
+items.forEach((_, i) => {
+      let telefono = document.getElementById(`vtelefono_${i}`).value.trim()
+      // Quita espacios, guiones y paréntesis
+      telefono = telefono.replace(/[\s\-\(\)]/g, '')
+      // Si solo pusieron 10 dígitos, agrega 52
+      if (telefono.length === 10) telefono = '52' + telefono
+      // Si pusieron +52, quita el +
+      if (telefono.startsWith('+')) telefono = telefono.slice(1)
       vendedores.push({
         id: i + 1,
         nombre: document.getElementById(`vnombre_${i}`).value,
         zona: document.getElementById(`vzona_${i}`).value,
-        telefono: document.getElementById(`vtelefono_${i}`).value
+        telefono: telefono
       })
     })
     datos.vendedores = vendedores
