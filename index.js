@@ -5,7 +5,6 @@ require('dotenv').config()
 const app = express()
 app.use(express.json())
 
-// Sesiones para recordar si el cliente está eligiendo vendedor
 const sesiones = {}
 
 function obtenerRespuestas() {
@@ -74,6 +73,11 @@ async function enviarMensaje(telefono, mensaje) {
   }
 }
 
+async function notificarVendedor(vendedor, telefonoCliente) {
+  const mensaje = `🔔 *Nuevo cliente interesado*\n\nHola ${vendedor.nombre}, un cliente te seleccionó para recibir atención.\n\n📱 Número del cliente: *+${telefonoCliente}*\n\nTe recomendamos escribirle lo antes posible. 😊`
+  await enviarMensaje(normalizarTelefono(vendedor.telefono), mensaje)
+}
+
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode']
   const token = req.query['hub.verify_token']
@@ -100,21 +104,24 @@ app.post('/webhook', async (req, res) => {
 
       console.log(`Mensaje de ${telefono}: ${texto}`)
 
-      // Si el cliente está en proceso de elegir vendedor
       if (sesiones[telefono] === 'eligiendo_vendedor') {
         const vendedor = obtenerVendedor(texto)
         if (vendedor) {
           delete sesiones[telefono]
-          const respuesta = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nSu número de WhatsApp es: *+${vendedor.telefono}*\n\n¡Él te atenderá con gusto! 😊`
-          await enviarMensaje(telefonoNormalizado, respuesta)
+
+          // 1 — Responde al cliente con link directo
+          const respuestaCliente = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nHaz clic aquí para abrir su WhatsApp directo:\nhttps://wa.me/${vendedor.telefono}\n\n¡Él te atenderá con gusto! 😊`
+          await enviarMensaje(telefonoNormalizado, respuestaCliente)
+
+          // 2 — Notifica al vendedor
+          await notificarVendedor(vendedor, telefonoNormalizado)
+
+          console.log(`Cliente ${telefonoNormalizado} conectado con vendedor ${vendedor.nombre}`)
         } else {
-          const respuesta = `Por favor elige un número válido de la lista. 👆`
-          await enviarMensaje(telefonoNormalizado, respuesta)
+          await enviarMensaje(telefonoNormalizado, `Por favor elige un número válido de la lista. 👆`)
         }
       } else {
-        // Flujo normal
         const respuesta = detectarRespuesta(texto)
-
         if (respuesta === 'MOSTRAR_VENDEDORES') {
           sesiones[telefono] = 'eligiendo_vendedor'
           await enviarMensaje(telefonoNormalizado, construirMenuVendedores())
@@ -122,8 +129,6 @@ app.post('/webhook', async (req, res) => {
           await enviarMensaje(telefonoNormalizado, respuesta)
         }
       }
-
-      console.log(`Procesado mensaje de ${telefono}`)
     }
   }
   res.sendStatus(200)

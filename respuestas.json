@@ -24,9 +24,9 @@
     "respuesta": "¡Hola! Bienvenido a Terrenos del Valle 👋 Puedo ayudarte con información sobre:\n\n📍 Ubicación\n💰 Precios\n🏠 Enganche\n📋 Financiamiento\n👤 Hablar con un asesor\n\n¿Sobre qué te gustaría saber?"
   },
   "vendedores": [
-    { "id": 1, "nombre": "Juan García", "zona": "Zona Norte", "telefono": "526621234567" },
-    { "id": 2, "nombre": "María López", "zona": "Zona Sur", "telefono": "526627654321" },
-    { "id": 3, "nombre": "Carlos Pérez", "zona": "Zona Centro", "telefono": "526629876543" }
+    { "id": 1, "nombre": "Juan García", "zona": "Zona Norte", "telefono": "526624145726" },
+    { "id": 2, "nombre": "María López", "zona": "Zona Sur", "telefono": "526624145726" },
+    { "id": 3, "nombre": "Carlos Pérez", "zona": "Zona Centro", "telefono": "526624145726" }
   ],
   "default": {
     "respuesta": "Gracias por escribirnos. Puedo ayudarte con información sobre:\n\n📍 Ubicación\n💰 Precios\n🏠 Enganche\n📋 Financiamiento\n👤 Hablar con un asesor\n\n¿Sobre qué te gustaría saber?"
