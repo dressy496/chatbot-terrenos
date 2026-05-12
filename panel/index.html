@@ -1,150 +1,312 @@
-const express = require('express')
-const axios = require('axios')
-const path = require('path')
-const fs = require('fs')
-require('dotenv').config()
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Bot Terrenos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; }
 
-const app = express()
-app.use(express.json())
+    .header {
+      background: #25D366;
+      color: white;
+      padding: 20px 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header h1 { font-size: 22px; }
 
-// Panel de administración
-app.use('/panel', express.static(path.join(__dirname, 'panel')))
+    .container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
 
-// Obtener datos actuales
-app.get('/admin/datos', (req, res) => {
-  const datos = JSON.parse(fs.readFileSync('./respuestas.json', 'utf8'))
-  res.json(datos)
-})
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      margin-bottom: 25px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #333;
+      border-bottom: 2px solid #25D366;
+      padding-bottom: 10px;
+    }
 
-// Guardar cambios
-app.post('/admin/guardar', (req, res) => {
-  fs.writeFileSync('./respuestas.json', JSON.stringify(req.body, null, 2))
-  res.json({ ok: true })
-})
+    .respuesta-item {
+      margin-bottom: 20px;
+    }
+    .respuesta-item label {
+      display: block;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .respuesta-item textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+      font-family: Arial, sans-serif;
+    }
+    .respuesta-item textarea:focus {
+      outline: none;
+      border-color: #25D366;
+    }
 
-const sesiones = {}
+    .vendedor-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: center;
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .vendedor-item input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      flex: 1;
+    }
+    .vendedor-item input:focus {
+      outline: none;
+      border-color: #25D366;
+    }
 
-function obtenerRespuestas() {
-  delete require.cache[require.resolve('./respuestas.json')]
-  return require('./respuestas.json')
-}
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-green { background: #25D366; color: white; }
+    .btn-red { background: #ff4d4d; color: white; }
+    .btn-blue { background: #007bff; color: white; }
 
-function detectarRespuesta(mensaje) {
-  const respuestas = obtenerRespuestas()
-  const texto = mensaje.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-  for (const clave in respuestas) {
-    if (clave === 'default' || clave === 'vendedores') continue
-    const palabras = respuestas[clave].palabras_clave || []
-    if (palabras.some(palabra => texto.includes(palabra))) {
-      return respuestas[clave].respuesta
+    .btn-guardar {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin-top: 10px;
+      background: #25D366;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-guardar:hover { background: #1ebe57; }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #333;
+      color: white;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      display: none;
+      z-index: 999;
+    }
+    .toast.show { display: block; }
+    .toast.success { background: #25D366; }
+    .toast.error { background: #ff4d4d; }
+
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      width: 340px;
+      text-align: center;
+    }
+    .login-box h2 { margin-bottom: 20px; color: #333; }
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-bottom: 15px;
+    }
+    .login-box input:focus { outline: none; border-color: #25D366; }
+  </style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 Panel Admin</h2>
+    <p style="color:#777; margin-bottom:20px; font-size:14px">Ingresa la contraseña para continuar</p>
+    <input type="password" id="passwordInput" placeholder="Contraseña" onkeydown="if(event.key==='Enter')verificarPassword()"/>
+    <button class="btn-guardar" onclick="verificarPassword()">Entrar</button>
+    <p id="errorLogin" style="color:red; margin-top:10px; font-size:13px; display:none">Contraseña incorrecta</p>
+  </div>
+</div>
+
+<div class="header">
+  <span style="font-size:28px">🏠</span>
+  <h1>Panel Bot — Terrenos del Valle</h1>
+</div>
+
+<div class="container">
+
+  <!-- Respuestas -->
+  <div class="card">
+    <h2>📝 Respuestas del Bot</h2>
+    <div id="respuestasContainer"></div>
+    <button class="btn-guardar" onclick="guardarRespuestas()">💾 Guardar Respuestas</button>
+  </div>
+
+  <!-- Vendedores -->
+  <div class="card">
+    <h2>👥 Vendedores</h2>
+    <div id="vendedoresContainer"></div>
+    <button class="btn btn-blue" onclick="agregarVendedor()" style="margin-top:10px">+ Agregar Vendedor</button>
+    <button class="btn-guardar" onclick="guardarVendedores()" style="margin-top:12px">💾 Guardar Vendedores</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const ADMIN_PASSWORD = 'admin2024'
+  let datos = {}
+
+  function verificarPassword() {
+    const input = document.getElementById('passwordInput').value
+    if (input === ADMIN_PASSWORD) {
+      document.getElementById('loginOverlay').style.display = 'none'
+      cargarDatos()
+    } else {
+      document.getElementById('errorLogin').style.display = 'block'
     }
   }
-  return respuestas.default.respuesta
-}
 
-function construirMenuVendedores() {
-  const respuestas = obtenerRespuestas()
-  const vendedores = respuestas.vendedores || []
-  let menu = '👥 *Nuestros asesores disponibles:*\n\n'
-  vendedores.forEach(v => {
-    menu += `${v.id}️⃣ *${v.nombre}* - ${v.zona}\n`
-  })
-  menu += '\nResponde con el *número* del asesor con quien deseas hablar.'
-  return menu
-}
-
-function obtenerVendedor(numero) {
-  const respuestas = obtenerRespuestas()
-  const vendedores = respuestas.vendedores || []
-  return vendedores.find(v => v.id === parseInt(numero))
-}
-
-function normalizarTelefono(telefono) {
-  if (telefono.startsWith('521') && telefono.length === 13) {
-    return '52' + telefono.slice(3)
+  async function cargarDatos() {
+    const res = await fetch('/admin/datos')
+    datos = await res.json()
+    renderRespuestas()
+    renderVendedores()
   }
-  return telefono
-}
 
-async function enviarMensaje(telefono, mensaje) {
-  try {
-    await axios.post(
-      `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: 'whatsapp',
-        to: telefono,
-        type: 'text',
-        text: { body: mensaje }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-  } catch (error) {
-    console.error('Error detallado:', error.response?.data)
+  const etiquetas = {
+    saludo: '👋 Saludo de bienvenida',
+    ubicacion: '📍 Ubicación',
+    precio: '💰 Precios',
+    enganche: '🏠 Enganche',
+    financiamiento: '📋 Financiamiento',
+    default: '🤖 Respuesta por defecto'
   }
-}
 
-async function notificarVendedor(vendedor, telefonoCliente) {
-  const mensaje = `🔔 *Nuevo cliente interesado*\n\nHola ${vendedor.nombre}, un cliente te seleccionó para recibir atención.\n\n📱 Número del cliente: *+${telefonoCliente}*\n\nTe recomendamos escribirle lo antes posible. 😊`
-  await enviarMensaje(normalizarTelefono(vendedor.telefono), mensaje)
-}
-
-app.get('/webhook', (req, res) => {
-  const mode = req.query['hub.mode']
-  const token = req.query['hub.verify_token']
-  const challenge = req.query['hub.challenge']
-  if (mode === 'subscribe' && token === process.env.VERIFY_TOKEN) {
-    res.status(200).send(challenge)
-  } else {
-    res.sendStatus(403)
-  }
-})
-
-app.post('/webhook', async (req, res) => {
-  const body = req.body
-  if (body.object === 'whatsapp_business_account') {
-    const entry = body.entry?.[0]
-    const changes = entry?.changes?.[0]
-    const value = changes?.value
-    const message = value?.messages?.[0]
-
-    if (message && message.type === 'text') {
-      const telefono = message.from
-      const telefonoNormalizado = normalizarTelefono(telefono)
-      const texto = message.text.body.trim()
-
-      console.log(`Mensaje de ${telefono}: ${texto}`)
-
-      if (sesiones[telefono] === 'eligiendo_vendedor') {
-        const vendedor = obtenerVendedor(texto)
-        if (vendedor) {
-          delete sesiones[telefono]
-          const respuestaCliente = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nHaz clic aquí para abrir su WhatsApp directo:\nhttps://wa.me/${vendedor.telefono}\n\n¡Él te atenderá con gusto! 😊`
-          await enviarMensaje(telefonoNormalizado, respuestaCliente)
-          await notificarVendedor(vendedor, telefonoNormalizado)
-          console.log(`Cliente ${telefonoNormalizado} conectado con ${vendedor.nombre}`)
-        } else {
-          await enviarMensaje(telefonoNormalizado, `Por favor elige un número válido de la lista. 👆`)
-        }
-      } else {
-        const respuesta = detectarRespuesta(texto)
-        if (respuesta === 'MOSTRAR_VENDEDORES') {
-          sesiones[telefono] = 'eligiendo_vendedor'
-          await enviarMensaje(telefonoNormalizado, construirMenuVendedores())
-        } else {
-          await enviarMensaje(telefonoNormalizado, respuesta)
-        }
-      }
+  function renderRespuestas() {
+    const container = document.getElementById('respuestasContainer')
+    container.innerHTML = ''
+    for (const clave in datos) {
+      if (clave === 'vendedores' || clave === 'asesor') continue
+      const label = etiquetas[clave] || clave
+      container.innerHTML += `
+        <div class="respuesta-item">
+          <label>${label}</label>
+          <textarea id="resp_${clave}">${datos[clave].respuesta || ''}</textarea>
+        </div>
+      `
     }
   }
-  res.sendStatus(200)
-})
 
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-  console.log(`Bot corriendo en puerto ${PORT}`)
-})
+  function renderVendedores() {
+    const container = document.getElementById('vendedoresContainer')
+    container.innerHTML = ''
+    const vendedores = datos.vendedores || []
+    vendedores.forEach((v, i) => {
+      container.innerHTML += `
+        <div class="vendedor-item" id="vendedor_${i}">
+          <input type="text" placeholder="Nombre" value="${v.nombre}" id="vnombre_${i}"/>
+          <input type="text" placeholder="Zona" value="${v.zona}" id="vzona_${i}"/>
+          <input type="text" placeholder="Teléfono (52662...)" value="${v.telefono}" id="vtelefono_${i}"/>
+          <button class="btn btn-red" onclick="eliminarVendedor(${i})">✕</button>
+        </div>
+      `
+    })
+  }
+
+  function agregarVendedor() {
+    if (!datos.vendedores) datos.vendedores = []
+    datos.vendedores.push({ id: datos.vendedores.length + 1, nombre: '', zona: '', telefono: '' })
+    renderVendedores()
+  }
+
+  function eliminarVendedor(index) {
+    datos.vendedores.splice(index, 1)
+    datos.vendedores = datos.vendedores.map((v, i) => ({ ...v, id: i + 1 }))
+    renderVendedores()
+  }
+
+  async function guardarRespuestas() {
+    for (const clave in datos) {
+      if (clave === 'vendedores' || clave === 'asesor') continue
+      const el = document.getElementById(`resp_${clave}`)
+      if (el) datos[clave].respuesta = el.value
+    }
+    const res = await fetch('/admin/guardar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    })
+    if (res.ok) mostrarToast('✅ Respuestas guardadas', 'success')
+    else mostrarToast('❌ Error al guardar', 'error')
+  }
+
+  async function guardarVendedores() {
+    const vendedores = []
+    const items = document.querySelectorAll('[id^="vendedor_"]')
+    items.forEach((_, i) => {
+      vendedores.push({
+        id: i + 1,
+        nombre: document.getElementById(`vnombre_${i}`).value,
+        zona: document.getElementById(`vzona_${i}`).value,
+        telefono: document.getElementById(`vtelefono_${i}`).value
+      })
+    })
+    datos.vendedores = vendedores
+    const res = await fetch('/admin/guardar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos)
+    })
+    if (res.ok) mostrarToast('✅ Vendedores guardados', 'success')
+    else mostrarToast('❌ Error al guardar', 'error')
+  }
+
+  function mostrarToast(mensaje, tipo) {
+    const toast = document.getElementById('toast')
+    toast.textContent = mensaje
+    toast.className = `toast show ${tipo}`
+    setTimeout(() => toast.className = 'toast', 3000)
+  }
+</script>
+</body>
+</html>
