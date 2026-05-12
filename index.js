@@ -5,18 +5,44 @@ require('dotenv').config()
 const app = express()
 app.use(express.json())
 
-const respuestas = require('./respuestas.json')
+// Sesiones para recordar si el cliente está eligiendo vendedor
+const sesiones = {}
+
+function obtenerRespuestas() {
+  delete require.cache[require.resolve('./respuestas.json')]
+  return require('./respuestas.json')
+}
 
 function detectarRespuesta(mensaje) {
+  const respuestas = obtenerRespuestas()
   const texto = mensaje.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
   for (const clave in respuestas) {
-    if (clave === 'default') continue
+    if (clave === 'default' || clave === 'vendedores') continue
     const palabras = respuestas[clave].palabras_clave || []
     if (palabras.some(palabra => texto.includes(palabra))) {
       return respuestas[clave].respuesta
     }
   }
+
   return respuestas.default.respuesta
+}
+
+function construirMenuVendedores() {
+  const respuestas = obtenerRespuestas()
+  const vendedores = respuestas.vendedores || []
+  let menu = '👥 *Nuestros asesores disponibles:*\n\n'
+  vendedores.forEach(v => {
+    menu += `${v.id}️⃣ *${v.nombre}* - ${v.zona}\n`
+  })
+  menu += '\nResponde con el *número* del asesor con quien deseas hablar.'
+  return menu
+}
+
+function obtenerVendedor(numero) {
+  const respuestas = obtenerRespuestas()
+  const vendedores = respuestas.vendedores || []
+  return vendedores.find(v => v.id === parseInt(numero))
 }
 
 function normalizarTelefono(telefono) {
@@ -29,7 +55,8 @@ function normalizarTelefono(telefono) {
 async function enviarMensaje(telefono, mensaje) {
   try {
     await axios.post(
-`https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,      {
+      `https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,
+      {
         messaging_product: 'whatsapp',
         to: telefono,
         type: 'text',
@@ -65,13 +92,38 @@ app.post('/webhook', async (req, res) => {
     const changes = entry?.changes?.[0]
     const value = changes?.value
     const message = value?.messages?.[0]
+
     if (message && message.type === 'text') {
       const telefono = message.from
-      const texto = message.text.body
+      const telefonoNormalizado = normalizarTelefono(telefono)
+      const texto = message.text.body.trim()
+
       console.log(`Mensaje de ${telefono}: ${texto}`)
-      const respuesta = detectarRespuesta(texto)
-      await enviarMensaje(normalizarTelefono(telefono), respuesta)
-      console.log(`Respondido: ${respuesta}`)
+
+      // Si el cliente está en proceso de elegir vendedor
+      if (sesiones[telefono] === 'eligiendo_vendedor') {
+        const vendedor = obtenerVendedor(texto)
+        if (vendedor) {
+          delete sesiones[telefono]
+          const respuesta = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nSu número de WhatsApp es: *+${vendedor.telefono}*\n\n¡Él te atenderá con gusto! 😊`
+          await enviarMensaje(telefonoNormalizado, respuesta)
+        } else {
+          const respuesta = `Por favor elige un número válido de la lista. 👆`
+          await enviarMensaje(telefonoNormalizado, respuesta)
+        }
+      } else {
+        // Flujo normal
+        const respuesta = detectarRespuesta(texto)
+
+        if (respuesta === 'MOSTRAR_VENDEDORES') {
+          sesiones[telefono] = 'eligiendo_vendedor'
+          await enviarMensaje(telefonoNormalizado, construirMenuVendedores())
+        } else {
+          await enviarMensaje(telefonoNormalizado, respuesta)
+        }
+      }
+
+      console.log(`Procesado mensaje de ${telefono}`)
     }
   }
   res.sendStatus(200)
