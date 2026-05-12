@@ -1,0 +1,25 @@
+{
+  "ubicacion": {
+    "palabras_clave": ["ubicacion", "ubicación", "donde", "dónde", "lugar", "dirección", "direccion"],
+    "respuesta": "Nuestros terrenos se encuentran cerca del aeropuerto, a un lado de la Carretera Federal km 12. ¡Te esperamos!"
+  },
+  "enganche": {
+    "palabras_clave": ["enganche", "anticipo", "pago inicial", "entrada"],
+    "respuesta": "El enganche para un terreno de 100 m² es de $35,000 MXN. Se puede pagar en 3 exhibiciones. ¿Te gustaría más información?"
+  },
+  "precio": {
+    "palabras_clave": ["precio", "costo", "cuanto", "cuánto", "valor"],
+    "respuesta": "Contamos con terrenos desde $280,000 MXN. Tenemos opciones de 100 m², 150 m² y 200 m². ¿Cuál se adapta mejor a ti?"
+  },
+  "financiamiento": {
+    "palabras_clave": ["financiamiento", "credito", "crédito", "mensualidad", "meses", "pagos"],
+    "respuesta": "Sí contamos con financiamiento directo sin banco. Puedes pagar hasta en 36 meses con tasa preferencial. ¿Quieres que un asesor te contacte?"
+  },
+  "saludo": {
+    "palabras_clave": ["hola", "buenos dias", "buenas tardes", "buenas noches", "buen dia", "hi"],
+    "respuesta": "¡Hola! Bienvenido a Terrenos del Valle 👋 Puedo ayudarte con información sobre:\n\n📍 Ubicación\n💰 Precios\n🏠 Enganche\n📋 Financiamiento\n\n¿Sobre qué te gustaría saber?"
+  },
+  "default": {
+    "respuesta": "Gracias por escribirnos. Para darte la mejor atención, en breve un asesor se comunicará contigo. También puedes preguntar sobre: ubicación, precios, enganche o financiamiento."
+  }
+}
