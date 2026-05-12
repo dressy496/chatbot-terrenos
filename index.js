@@ -29,8 +29,7 @@ function normalizarTelefono(telefono) {
 async function enviarMensaje(telefono, mensaje) {
   try {
     await axios.post(
-      `https://graph.facebook.com/v20.0/${process.env.PHONE_NUMBER_ID}/messages`,
-      {
+`https://graph.facebook.com/v25.0/${process.env.PHONE_NUMBER_ID}/messages`,      {
         messaging_product: 'whatsapp',
         to: telefono,
         type: 'text',
