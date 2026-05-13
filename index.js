@@ -125,6 +125,7 @@ app.post('/webhook', async (req, res) => {
           delete sesiones[telefono]
           const respuestaCliente = `✅ ¡Perfecto! Te conectamos con *${vendedor.nombre}* (${vendedor.zona}).\n\nHaz clic aquí para abrir su WhatsApp directo:\nhttps://wa.me/${vendedor.telefono}\n\n¡Él te atenderá con gusto! 😊`
           await enviarMensaje(telefonoNormalizado, respuestaCliente)
+          console.log(`Notificando a vendedor: ${vendedor.nombre} al número: ${vendedor.telefono}`)
           await notificarVendedor(vendedor, telefonoNormalizado)
           console.log(`Cliente ${telefonoNormalizado} conectado con ${vendedor.nombre}`)
         } else {
