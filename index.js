@@ -90,7 +90,9 @@ async function enviarMensaje(telefono, mensaje) {
 
 async function notificarVendedor(vendedor, telefonoCliente) {
   const mensaje = `🔔 *Nuevo cliente interesado*\n\nHola ${vendedor.nombre}, un cliente te seleccionó para recibir atención.\n\n📱 Número del cliente: *+${telefonoCliente}*\n\nTe recomendamos escribirle lo antes posible. 😊`
-  await enviarMensaje(normalizarTelefono(vendedor.telefono), mensaje)
+  const telefonoVendedor = normalizarTelefono(vendedor.telefono)
+  console.log(`Intentando notificar a ${vendedor.nombre} al número: ${telefonoVendedor}`)
+  await enviarMensaje(telefonoVendedor, mensaje)
 }
 
 app.get('/webhook', (req, res) => {
